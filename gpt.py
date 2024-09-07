@@ -2,22 +2,25 @@ from openai import AzureOpenAI
 import gradio as gr
 client = AzureOpenAI(
   azure_endpoint = "https://aoai-ump-just-eastus.openai.azure.com/", 
-  api_key="e25f7e82bb2440e49e183908c3324e8a",  
+  api_key="XXX",  
   api_version="2024-02-01"
 )
 
-initial_prompt="You should ask\"How can I help you today? If you need diagnose, please say \"diagnose\".\""
+initial_prompt="You are a health helper. You should ask\"How can I help you today? If you need diagnose, please say \"diagnose\".\""
+
+
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot()
     msg = gr.Textbox()
-    clear = gr.Button("Clear")
 
     def user(user_message, history):
         
+        # Normal conversation flow
         return "", history + [[user_message, None]]
 
     def bot(history):
+
         # Combine history conversation
         conversation = initial_prompt + " "
         for message in history:
@@ -45,7 +48,6 @@ with gr.Blocks() as demo:
     msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
         bot, chatbot, chatbot
     )
-    clear.click(lambda: None, None, chatbot, queue=False)
 
 demo.launch()
 
