@@ -54,8 +54,55 @@ def read_prescriptions():
 
 
 def ai_search(search_content):
-    # TODO
-    return "** This is the search result **"
+    azure_openai_endpoint: str = "https://aoai-ump-just-eastus.openai.azure.com/"
+    azure_openai_api_key: str = "XX"
+    azure_openai_embedding_deployment: str = "aoai-text-embedding-3-large"
+    embedding_model_name: str = "text-embedding-3-large"
+    azure_openai_api_version: str = "2024-02-01"
+    search_endpoint: str = "https://ai-search-ump.search.windows.net"
+    search_api_key: str = "XX"
+    index_name: str = "team-9-index"
+
+    from azure.identity import DefaultAzureCredential
+    from azure.core.credentials import AzureKeyCredential
+
+    endpoint = search_endpoint
+    credential = AzureKeyCredential(search_api_key)
+    index_name = index_name
+    azure_openai_endpoint = azure_openai_endpoint
+    azure_openai_key = azure_openai_api_key
+    azure_openai_embedding_deployment = azure_openai_embedding_deployment
+    embedding_model_name = embedding_model_name
+    azure_openai_api_version = azure_openai_api_version
+
+    from azure.search.documents import SearchClient
+    from openai import AzureOpenAI
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+    import json
+    openai_credential = DefaultAzureCredential()
+    client = AzureOpenAI(
+        azure_deployment=azure_openai_embedding_deployment,
+        api_version=azure_openai_api_version,
+        azure_endpoint=azure_openai_endpoint,
+        api_key=azure_openai_key
+    )
+    search_client = SearchClient(endpoint=endpoint, index_name=index_name, credential=credential)
+    from azure.search.documents.models import VectorizedQuery
+    # Pure Vector Search
+    query = search_content
+    embedding = client.embeddings.create(input=query, model=embedding_model_name).data[0].embedding
+    vector_query = VectorizedQuery(vector=embedding, k_nearest_neighbors=3, fields="symptomsVector")
+    results = search_client.search(
+        search_text=None,
+        vector_queries= [vector_query],
+        select=["age", "gender","height", "disease", "symptoms","alcohol","smoking"],
+    )
+    search_result=""
+    for result in results:
+        search_result+="{"
+        search_result=search_result+"age:"+result['age']+ "gender:"+result['gender']+"height:"+result['height']+"alcohol:"+result['alcohol']+"smoking:"+result['smoking']+ "disease:"+result['disease']+ "symptoms:"+result['symptoms']
+        search_result+="}"
+    return search_result
 
 def insert_string(original_string,search_string,new_string):
     index = original_string.find(search_string)
