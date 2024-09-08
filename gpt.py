@@ -2,20 +2,51 @@ from openai import AzureOpenAI
 import gradio as gr
 client = AzureOpenAI(
   azure_endpoint = "https://aoai-ump-just-eastus.openai.azure.com/", 
-  api_key="XXX",  
-  api_version="2024-02-01"
+  api_key="XX",  
+  api_version="2024-06-01"
 )
 
 initial_prompt="You are a health helper. You should ask\"How can I help you today? If you need diagnose, please say \"diagnose\".\""
 
+initial_prompt="You are a health helper. The first question you should ask is \"Hi, I'm your health helper. How can I help you today?\" \
+                Then the user will ask you to do a stimulating diagonse for him. You will ask the basic health information about the user in several continuous questions, including age, height, gender and symptoms. \
+                User will provide all the information, do not create conversation by yourself.\
+                After you get all the information. You should ask the user \"Thanks for providing the information, have you told me all the symptoms?\""
 
+def ai_search(search_content):
+    # TODO
+    return "** This is the search result **"
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot()
     msg = gr.Textbox()
 
     def user(user_message, history):
-        
+        # Diagnose mode
+        if user_message.lower()=="yes":
+            # Combine history conversation
+            conversation = initial_prompt + " "
+            for message in history:
+                conversation += f"User: {message[0]}\n"
+                if message[1] is not None:
+                    conversation += f"Bot: {message[1]}\n"
+            # Extract the search content
+            extract_prompt="Here is a conversation between a user and a chatbot. The user has provided some basic health information and described some symptoms. \
+                            Please summarize the basic health informations and the symptoms. You should only reply the summary. \
+                            In a format like: \"basic informations: height is 170cm, weight is 70kg, gender is male. The symptoms are coughing, headache and fever.\" The conversation is:"
+            response = client.chat.completions.create(
+            model="aoai-gpt-4o",  
+            messages=[{"role": "user", "content": extract_prompt+conversation}]
+            )
+            bot_message = response.choices[0].message.content
+            # AI Search
+            search_result=ai_search(bot_message)
+            # Add the search result in conversation history
+            data_prompt="Here are some disease records that we had, please based on these data and the personal information I provided, give me a diagnose to my symptoms.\
+                        The diagnose should include something like: \"Based on your information and symptoms, Your diagnosis is:...\"\
+                        You should mention you are not a real doctor, so this diagosis may not be true, please consult a real doctor.  "
+            user_message=data_prompt+search_result
+
         # Normal conversation flow
         return "", history + [[user_message, None]]
 
