@@ -1,20 +1,57 @@
 from openai import AzureOpenAI
 import gradio as gr
+import json
+import os
+
 client = AzureOpenAI(
   azure_endpoint = "https://aoai-ump-just-eastus.openai.azure.com/", 
   api_key="XX",  
   api_version="2024-06-01"
 )
 
-initial_prompt="You are a health helper. You should ask\"How can I help you today? If you need diagnose, please say \"diagnose\".\""
-
-initial_prompt="You are a health helper. The first question you should ask is \"Hi, I'm your health helper. How can I help you today?\" \
-                Then the user will ask you to do a stimulating diagonse for him. You will ask the basic health information about the user in several continuous questions, including age, height, gender and symptoms. \
+initial_prompt="You are a health helper. The first question you should ask is \"Hi, I'm your AI medicine notebook. How can I help you today? I can be your medicine notebook or I can provide diagnose and health suggestion for you.\" \
+                If the user says medicine notebook, you will have some prescription data of this user, _base on the prescription data, answer the question from the user.\
+                If the user says diagnose, you will do a stimulating diagonse for him. You will ask the basic health information about the user in several continuous questions, including age, height, gender and symptoms. \
                 User will provide all the information, do not create conversation by yourself.\
-                After you get all the information. You should ask the user \"Thanks for providing the information, have you told me all the symptoms?\""
+                After you get all the information. You should ask the user \"Thanks for providing the information, have you told me all the symptoms?\
+                If the user says suggestion,You will ask the basic health information about the user in several continuous questions, including age, height and gender,\
+                User will provide all the information, do not create conversation by yourself.\
+                After you get all the information. You should make some suggestion base on the information."
 
 if_diagnose=False
+if_suggestion=False
+if_note=False
 data_prompt=""
+
+def add_prescription(prescription_text):
+    """Add a prescription to an existing file or create a new one."""
+    data = read_prescriptions()
+    
+    # Add a new prescription
+    
+    data["prescriptions"].append(prescription_text)
+
+    save_data(data, "Prescriptions.json")
+    #print("Prescription added successfully.")
+
+def load_data(filename):
+    """Load the prescription data from a JSON file."""
+    if not os.path.exists(filename):
+        return None
+    with open(filename, 'r') as file:
+        data = json.load(file)
+    return data
+
+def save_data(data, filename):
+    """Save the prescription data to a JSON file."""
+    with open(filename, 'w') as file:
+        json.dump(data, file, indent=4)
+
+def read_prescriptions():
+    """Read all prescriptions for a patient."""
+    data = json.dumps(load_data("Prescriptions.json"))
+    return data
+
 
 def ai_search(search_content):
     # TODO
@@ -33,11 +70,28 @@ def insert_string(original_string,search_string,new_string):
         return original_string
 
 with gr.Blocks() as demo:
-    chatbot = gr.Chatbot()
+    with gr.Row():
+        gr.Markdown("# AI お薬手帳")  # Title at the top
+        gr.Markdown(value='<img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg6JktpLgrL79uphgxp_cu5IbWYiZXXHXxen1HuP1I1gMRDy9W6a6tPMRvSJ7OkNEoHCaASLl1u-aXDZm2oXUeeqFtDnlN5H-7qn9ClkwG2ZZsKv1cpREuRA9_wp13YdVMUTwT8SLwW3qou/s1600/kenkoushindan_hana_taisougi_boy.png" width="100" height="100">', 
+                    elem_id="logo")
+
+
+    chatbot = gr.Chatbot(show_label=False)
     msg = gr.Textbox()
 
     def user(user_message, history):
-        global if_diagnose, data_insert_index,data_prompt
+        global if_diagnose,if_note, data_insert_index,data_prompt
+
+        if user_message.find("medicine notebook")!=-1:
+            if_note=True
+
+        if user_message.find("diagnose")!=-1:
+            if_diagnose=True
+
+        if user_message.find("suggestion")!=-1:
+            if_suggestion=True
+
+
         # Diagnose mode
         if user_message.lower()=="yes":
             if_diagnose=True
@@ -73,7 +127,7 @@ with gr.Blocks() as demo:
         return "", history + [[user_message, None]]
 
     def bot(history):
-        global data_prompt,if_diagnose
+        global data_prompt,if_diagnose,if_note
         # Combine history conversation
         conversation = initial_prompt + " "
         for message in history:
@@ -82,8 +136,11 @@ with gr.Blocks() as demo:
                 conversation += f"Bot: {message[1]}\n"
         #user_message = history[-1][0]
         if if_diagnose:
-            insert_string(conversation,"User: yes",data_prompt)
-
+            conversation=insert_string(conversation,"User: yes",data_prompt)
+        if if_note:
+            prescription_data="Here are the prescriptions:"+read_prescriptions()+"."
+            conversation=insert_string(conversation,"_base",prescription_data)
+            
         # Request to Azure OpenAI API
         response = client.chat.completions.create(
         model="aoai-gpt-4o",  
@@ -106,59 +163,6 @@ with gr.Blocks() as demo:
 
 demo.launch()
 
-# store the whole conversation
-# chat_history=""
-# diagnose_input=""
-# def diagnose_message():
-#     response = client.chat.completions.create(
-#         model="aoai-gpt-4o",  
-#         messages=[{"role": "system", "content": "You are playing a role as health helper. What you need to do is diagnosis. You will ask the following question: \
-#                    What's your age and height? After user ing the question, you should repeat the answer to check the result."}]
-#                    #1. What's your age? 2.What's your height? 3.What's your weight?"}]
-#     )
-#     bot_response = response.choices[0].message.content
-#     print(bot_response)
-#     return bot_response
-# def collect_data():
-#     datas=""
-#     user_input = input("You: ")
-#     datas += chat_with_bot(user_input)
-#     return datas
 
-# def chat_with_bot(user_input):
-#     # Send a request to the OpenAI API
-#     response = client.chat.completions.create(
-#         model="aoai-gpt-4o",  
-#         messages=[{"role": "user", "content": user_input}]
-#     )
-#     # Extract the response message content
-#     bot_response = response.choices[0].message.content
-#     return bot_response
 
-# def conversation():
-#     while True:
-#         user_input = input("You: ")
-#         if user_input.lower() in ["exit", "quit"]:
-#             break
-#         chat_history+=" user:"+user_input
-#         if user_input=="diagnose" :
-#                 diagnose_message()
-                
-#         bot_response = chat_with_bot(chat_history)
-#         chat_history+=" bot:"+bot_response
-#         #print(f"Bot: {bot_response}")
-#         return bot_response
 
-# def conversation(user_input):
-#     #user_input = input("You: ")
-#     #chat_history+=" user:"+user_input
-#     if user_input=="diagnose" :
-#             diagnose_message()
-            
-#     bot_response = chat_with_bot(chat_history)
-#     #chat_history+=" bot:"+bot_response
-#     #print(f"Bot: {bot_response}")
-#     return bot_response
-
-# if __name__ == "__main__":
-#     conversation()    

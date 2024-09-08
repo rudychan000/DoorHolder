@@ -1,0 +1,45 @@
+{
+    "patient": {
+        "name": "Alice Johnson",
+        "age": 45,
+        "gender": "Female"
+    },
+    "prescriptions": [
+        {
+            "date": "2024-01-15",
+            "disease": "Disease1",
+            "medications": [
+                {
+                    "name": "Drug1",
+                    "dosage": "10mg",
+                    "duration": "30 days",
+                    "instructions": "Take once daily in the morning"
+                }
+            ]
+        },
+        {
+            "date": "2024-03-20",
+            "disease": "Disease2",
+            "medications": [
+                {
+                    "name": "Drug2",
+                    "dosage": "500mg",
+                    "duration": "30 days",
+                    "instructions": "Take twice daily with meals"
+                }
+            ]
+        },
+        {
+            "date": "2024-05-10",
+            "disease": "Disease3",
+            "medications": [
+                {
+                    "name": "Drug3",
+                    "dosage": "20mg",
+                    "duration": "90 days",
+                    "instructions": "Take once daily at night"
+                }
+            ]
+        }
+    ]
+}
