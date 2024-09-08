@@ -13,17 +13,34 @@ initial_prompt="You are a health helper. The first question you should ask is \"
                 User will provide all the information, do not create conversation by yourself.\
                 After you get all the information. You should ask the user \"Thanks for providing the information, have you told me all the symptoms?\""
 
+if_diagnose=False
+data_prompt=""
+
 def ai_search(search_content):
     # TODO
     return "** This is the search result **"
+
+def insert_string(original_string,search_string,new_string):
+    index = original_string.find(search_string)
+
+    # Check if the search_string is found
+    if index != -1:
+        # Insert the new string at the found position
+        updated_string = original_string[:index] + new_string + original_string[index:]
+        return updated_string
+    else:
+        # Return the original string if the search_string is not found
+        return original_string
 
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot()
     msg = gr.Textbox()
 
     def user(user_message, history):
+        global if_diagnose, data_insert_index,data_prompt
         # Diagnose mode
         if user_message.lower()=="yes":
+            if_diagnose=True
             # Combine history conversation
             conversation = initial_prompt + " "
             for message in history:
@@ -44,14 +61,19 @@ with gr.Blocks() as demo:
             # Add the search result in conversation history
             data_prompt="Here are some disease records that we had, please based on these data and the personal information I provided, give me a diagnose to my symptoms.\
                         The diagnose should include something like: \"Based on your information and symptoms, Your diagnosis is:...\"\
-                        You should mention you are not a real doctor, so this diagosis may not be true, please consult a real doctor.  "
-            user_message=data_prompt+search_result
+                        You should mention you are not a real doctor, so this diagosis may not be true, please consult a real doctor.  "+search_result
+            #user_message=data_prompt+search_result
+            # # Shift history
+            # history + [[user_message, None]]
+            # history[-1][1] = ""
+            # return "",history
+
 
         # Normal conversation flow
         return "", history + [[user_message, None]]
 
     def bot(history):
-
+        global data_prompt,if_diagnose
         # Combine history conversation
         conversation = initial_prompt + " "
         for message in history:
@@ -59,6 +81,8 @@ with gr.Blocks() as demo:
             if message[1] is not None:
                 conversation += f"Bot: {message[1]}\n"
         #user_message = history[-1][0]
+        if if_diagnose:
+            insert_string(conversation,"User: yes",data_prompt)
 
         # Request to Azure OpenAI API
         response = client.chat.completions.create(
